@@ -1,0 +1,34 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# Banco de dados (SQLite)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.sqlite
+data/*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage / cache
+coverage/
+.vitest/
+*.tsbuildinfo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/

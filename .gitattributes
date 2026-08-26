@@ -1,0 +1,17 @@
+# Normaliza fim de linha: LF no repositorio, independente do SO do dev.
+* text=auto eol=lf
+
+*.ts   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+
+Dockerfile text eol=lf
+
+# Binarios e arquivos que nao devem sofrer conversao.
+*.db   binary
+*.png  binary
+*.jpg  binary
+
+package-lock.json linguist-generated=true -diff

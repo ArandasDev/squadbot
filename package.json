@@ -1,0 +1,39 @@
+{
+  "name": "squadbot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bot de organizacao para squads no Discord: tarefas, notas, ideias, decisoes, links e lembretes.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "deploy:commands": "node dist/scripts/deploy-commands.js",
+    "deploy:commands:dev": "tsx src/scripts/deploy-commands.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.13.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.10.0",
+    "vitest": "^2.1.3"
+  }
+}
