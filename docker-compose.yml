@@ -1,0 +1,20 @@
+services:
+  bot:
+    build: .
+    image: squadbot:latest
+    container_name: squadbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Dentro do container o banco fica sempre no volume persistente.
+      DATABASE_PATH: /app/data/squadbot.db
+      NODE_ENV: production
+    volumes:
+      - ./data:/app/data
+    # Logs estruturados em JSON, com rotacao para nao encher o disco.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
