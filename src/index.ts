@@ -2,6 +2,7 @@ import { loadConfig } from './config.js';
 import { createLogger } from './utils/logger.js';
 import { Database } from './database/Database.js';
 import { createContext } from './services/index.js';
+import { Events } from 'discord.js';
 import { createClient } from './bot/client.js';
 import { registerEvents } from './bot/events.js';
 import { registerCommands } from './bot/commands.js';
@@ -36,7 +37,7 @@ async function main(): Promise<void> {
 
   const worker = new ReminderWorker(context, new DiscordReminderDelivery(client));
 
-  client.once('clientReady', () => {
+  client.once(Events.ClientReady, () => {
     worker.start();
   });
 
