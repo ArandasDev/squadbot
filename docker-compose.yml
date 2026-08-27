@@ -1,18 +1,47 @@
 services:
   bot:
-    build: .
-    image: squadbot:latest
-    container_name: squadbot
+    build:
+      context: .
+      dockerfile: apps/bot/Dockerfile
+    image: squadbot-bot:latest
+    container_name: squadbot-bot
     restart: unless-stopped
     env_file:
-      - .env
+      - apps/bot/.env
     environment:
       # Dentro do container o banco fica sempre no volume persistente.
       DATABASE_PATH: /app/data/squadbot.db
       NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: '3001'
     volumes:
-      - ./data:/app/data
-    # Logs estruturados em JSON, com rotacao para nao encher o disco.
+      - ./apps/bot/data:/app/data
+    expose:
+      - '3001'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: squadbot-web:latest
+    container_name: squadbot-web
+    restart: unless-stopped
+    depends_on:
+      - bot
+    env_file:
+      - apps/web/.env
+    environment:
+      NODE_ENV: production
+      # Rede interna do Compose: o dashboard fala com o bot pelo nome do servico.
+      # A API nunca precisa ficar exposta na internet.
+      SQUADBOT_API_URL: http://bot:3001
+    ports:
+      - '3000:3000'
     logging:
       driver: json-file
       options:
