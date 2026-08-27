@@ -7,6 +7,8 @@ import { createClient } from './bot/client.js';
 import { registerEvents } from './bot/events.js';
 import { registerCommands } from './bot/commands.js';
 import { DiscordReminderDelivery, ReminderWorker } from './workers/ReminderWorker.js';
+import { startApiServer } from './api/server.js';
+import type { FastifyInstance } from 'fastify';
 
 /**
  * Ponto de entrada do SquadBot.
@@ -37,8 +39,19 @@ async function main(): Promise<void> {
 
   const worker = new ReminderWorker(context, new DiscordReminderDelivery(client));
 
+  // A API precisa do client pronto para resolver guilds e permissoes, entao
+  // sobe junto com o worker, depois do handshake com o Discord.
+  let api: FastifyInstance | null = null;
+
   client.once(Events.ClientReady, () => {
     worker.start();
+    void startApiServer(context, client)
+      .then((instance) => {
+        api = instance;
+      })
+      .catch((error: unknown) => {
+        logger.error('Falha ao iniciar a API REST', { error });
+      });
   });
 
   let shuttingDown = false;
@@ -48,6 +61,7 @@ async function main(): Promise<void> {
 
     logger.info('Encerrando SquadBot', { signal });
     worker.stop();
+    await api?.close().catch(() => undefined);
     await client.destroy().catch(() => undefined);
     db.close();
     process.exit(0);

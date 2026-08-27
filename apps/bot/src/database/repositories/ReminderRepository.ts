@@ -9,6 +9,7 @@ export interface ReminderWithTargets extends ReminderRow {
   recipient_timezone: string;
   creator_discord_id: string;
   creator_username: string;
+  creator_timezone: string;
   item_title: string | null;
 }
 
@@ -19,6 +20,7 @@ const WITH_JOINS = `
          ru.timezone   AS recipient_timezone,
          cu.discord_id AS creator_discord_id,
          cu.username   AS creator_username,
+         cu.timezone   AS creator_timezone,
          i.title       AS item_title
   FROM reminders r
   JOIN users ru ON ru.id = r.recipient_id
