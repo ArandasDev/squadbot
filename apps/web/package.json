@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:standalone": "node .next/standalone/apps/web/server.js"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
