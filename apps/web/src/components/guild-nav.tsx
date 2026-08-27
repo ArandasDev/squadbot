@@ -2,57 +2,41 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  BellRing,
-  CheckSquare,
-  FolderKanban,
-  LayoutDashboard,
-  Lightbulb,
-  Link2,
-  Scale,
-  Search,
-  StickyNote,
-  UserRound,
-} from 'lucide-react';
+import { NAV_LINKS, isNavLinkActive } from '@/components/nav-links';
 import { cn } from '@/lib/utils';
 
-const LINKS = [
-  { href: '', label: 'Resumo', icon: LayoutDashboard },
-  { href: '/minhas', label: 'Minhas', icon: UserRound },
-  { href: '/tarefas', label: 'Tarefas', icon: CheckSquare },
-  { href: '/projetos', label: 'Projetos', icon: FolderKanban },
-  { href: '/notas', label: 'Notas', icon: StickyNote },
-  { href: '/ideias', label: 'Ideias', icon: Lightbulb },
-  { href: '/decisoes', label: 'Decisões', icon: Scale },
-  { href: '/links', label: 'Links', icon: Link2 },
-  { href: '/lembretes', label: 'Lembretes', icon: BellRing },
-  { href: '/buscar', label: 'Buscar', icon: Search },
-] as const;
-
+/**
+ * Coluna de navegação do desktop. No mobile quem assume é a `MobileNav`,
+ * em gaveta — as duas leem a mesma lista de seções.
+ */
 export function GuildNav({ guildId }: { guildId: string }) {
   const pathname = usePathname();
   const base = `/g/${guildId}`;
 
   return (
-    <nav aria-label="Seções do squad" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-      {LINKS.map(({ href, label, icon: Icon }) => {
-        const target = `${base}${href}`;
-        const active = href === '' ? pathname === base : pathname.startsWith(target);
+    <nav aria-label="Seções do squad" className="flex flex-col gap-0.5">
+      {NAV_LINKS.map((link) => {
+        const active = isNavLinkActive(link, pathname, base);
+        const Icon = link.icon;
 
         return (
           <Link
-            key={label}
-            href={target}
+            key={link.label}
+            href={`${base}${link.href}`}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               active
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
             )}
           >
-            <Icon className="size-4 shrink-0" aria-hidden />
-            {label}
+            <Icon
+              className={cn('size-4 shrink-0', active && 'text-primary')}
+              aria-hidden
+            />
+            {link.label}
           </Link>
         );
       })}

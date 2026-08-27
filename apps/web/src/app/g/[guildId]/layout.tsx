@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GuildNav } from '@/components/guild-nav';
+import { MobileNav } from '@/components/mobile-nav';
 import { UserMenu } from '@/components/user-menu';
 import type { MeDTO } from '@/lib/api/types';
 
@@ -44,8 +45,15 @@ export default async function GuildLayout({
   return (
     <div className="min-h-dvh bg-muted/20">
       <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
-          <Avatar className="size-8">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-3">
+          <MobileNav
+            guildId={guildId}
+            guildName={me.guild.name}
+            guildIconUrl={me.guild.iconUrl}
+            isAdmin={me.isAdmin}
+          />
+
+          <Avatar className="hidden size-8 md:flex">
             {me.guild.iconUrl ? <AvatarImage src={me.guild.iconUrl} alt="" /> : null}
             <AvatarFallback>{me.guild.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -76,14 +84,15 @@ export default async function GuildLayout({
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 md:flex-row">
-        <aside className="md:w-52 md:shrink-0">
-          <div className="md:sticky md:top-20">
+      <div className="mx-auto flex max-w-7xl gap-6 px-4 py-5 md:py-6">
+        {/* No mobile a navegação vive na gaveta do cabeçalho, não aqui. */}
+        <aside className="hidden md:block md:w-52 md:shrink-0">
+          <div className="sticky top-20">
             <GuildNav guildId={guildId} />
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 space-y-6 pb-12">{children}</main>
+        <main className="min-w-0 flex-1 space-y-5 pb-12 md:space-y-6">{children}</main>
       </div>
     </div>
   );

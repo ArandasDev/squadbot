@@ -46,9 +46,9 @@ export function TaskFilters({ projects, members }: TaskFiltersProps) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
       <Select value={current('projectId')} onValueChange={(value) => update('projectId', value)}>
-        <SelectTrigger className="w-[190px]" aria-label="Filtrar por projeto">
+        <SelectTrigger className="w-full sm:w-[190px]" aria-label="Filtrar por projeto">
           <SelectValue placeholder="Projeto" />
         </SelectTrigger>
         <SelectContent>
@@ -63,7 +63,7 @@ export function TaskFilters({ projects, members }: TaskFiltersProps) {
       </Select>
 
       <Select value={current('assignedTo')} onValueChange={(value) => update('assignedTo', value)}>
-        <SelectTrigger className="w-[190px]" aria-label="Filtrar por responsável">
+        <SelectTrigger className="w-full sm:w-[190px]" aria-label="Filtrar por responsável">
           <SelectValue placeholder="Responsável" />
         </SelectTrigger>
         <SelectContent>
@@ -77,7 +77,7 @@ export function TaskFilters({ projects, members }: TaskFiltersProps) {
       </Select>
 
       <Select value={current('status')} onValueChange={(value) => update('status', value)}>
-        <SelectTrigger className="w-[170px]" aria-label="Filtrar por status">
+        <SelectTrigger className="col-span-2 w-full sm:col-span-1 sm:w-[170px]" aria-label="Filtrar por status">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -94,6 +94,7 @@ export function TaskFilters({ projects, members }: TaskFiltersProps) {
         <Button
           variant="ghost"
           size="sm"
+          className="col-span-2 justify-self-start sm:col-span-1"
           onClick={() => startTransition(() => router.push('?', { scroll: false }))}
         >
           <FilterX className="size-4" aria-hidden />
@@ -102,7 +103,10 @@ export function TaskFilters({ projects, members }: TaskFiltersProps) {
       ) : null}
 
       {pending ? (
-        <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Carregando" />
+        <Loader2
+          className="col-span-2 size-4 animate-spin justify-self-start text-muted-foreground sm:col-span-1 sm:self-center"
+          aria-label="Carregando"
+        />
       ) : null}
     </div>
   );

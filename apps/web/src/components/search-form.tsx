@@ -36,8 +36,8 @@ export function SearchForm() {
   }
 
   return (
-    <form action={submit} className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-[240px] flex-1">
+    <form action={submit} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="relative w-full sm:min-w-[240px] sm:flex-1">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
@@ -54,7 +54,7 @@ export function SearchForm() {
       </div>
 
       <Select name="tipo" defaultValue={searchParams.get('tipo') ?? TODOS}>
-        <SelectTrigger className="w-[160px]" aria-label="Filtrar por tipo">
+        <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filtrar por tipo">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
