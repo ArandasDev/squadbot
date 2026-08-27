@@ -61,8 +61,13 @@ export function loadConfig(): AppConfig {
   const intervalRaw = Number.parseInt(optionalEnv('REMINDER_INTERVAL_MS', '30000'), 10);
   const reminderIntervalMs = Number.isFinite(intervalRaw) && intervalRaw >= 1000 ? intervalRaw : 30000;
 
-  // Railway (e a maioria das PaaS) injeta PORT; API_PORT e o fallback local.
-  const portRaw = Number.parseInt(optionalEnv('PORT', optionalEnv('API_PORT', '3001')), 10);
+  // Precedencia: API_PORT (explicito) > PORT (injetado pela PaaS) > 3001.
+  //
+  // O explicito vem primeiro de proposito. O bot e alcancado por rede privada
+  // num endereco fixo (SQUADBOT_API_URL), entao um PORT injetado pela
+  // plataforma moveria a API para outra porta sem que o dashboard soubesse —
+  // o sintoma seria um ECONNREFUSED sem pista nenhuma no log.
+  const portRaw = Number.parseInt(optionalEnv('API_PORT', optionalEnv('PORT', '3001')), 10);
   const apiPort = Number.isFinite(portRaw) && portRaw > 0 ? portRaw : 3001;
 
   return {

@@ -192,7 +192,7 @@ API_HOST=0.0.0.0
 | `REMINDER_INTERVAL_MS` | não | Intervalo do worker de lembretes. Padrão: `30000` (30s). |
 | `LOG_LEVEL` | não | `debug`, `info`, `warn` ou `error`. |
 | `API_TOKEN` | para o dashboard | Token de serviço. **Sem ele a API não sobe** e o dashboard não funciona. |
-| `API_PORT` | não | Porta da API. `PORT` (injetada por PaaS) tem precedência. Padrão: `3001`. |
+| `API_PORT` | não | Porta da API. Tem precedência sobre o `PORT` injetado pela plataforma. Padrão: `3001`. |
 | `API_HOST` | não | Interface de escuta. Padrão `0.0.0.0`; no Railway veja a [nota sobre IPv6](#deploy-railway-e-similares). |
 
 Gere o token de serviço com:
