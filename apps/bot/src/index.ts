@@ -82,13 +82,23 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   // Aqui o logger pode ainda nao existir (falha ao carregar a config).
+  const detail = error instanceof Error ? error : new Error(String(error));
+
+  // Texto puro ANTES do JSON, e de proposito: coletores de log que reconhecem
+  // JSON (Railway entre eles) exibem so o campo `message` e escondem o resto
+  // atras de um expander. Um boot que falha precisa dizer o motivo na primeira
+  // linha, sem exigir um clique.
+  console.error(`[FATAL] Falha ao iniciar o SquadBot: ${detail.message}`);
+  if (detail.stack) console.error(detail.stack);
+
   console.error(
     JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'error',
       message: 'Falha ao iniciar o SquadBot',
-      error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+      error: { name: detail.name, message: detail.message },
     }),
   );
+
   process.exit(1);
 });
