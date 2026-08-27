@@ -3,6 +3,9 @@ node_modules/
 
 # Build
 dist/
+.next/
+out/
+build/
 
 # Ambiente
 .env
@@ -10,11 +13,11 @@ dist/
 .env.*.local
 
 # Banco de dados (SQLite)
-data/*.db
-data/*.db-shm
-data/*.db-wal
-data/*.sqlite
-data/*.sqlite3
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
+**/data/*.sqlite
+**/data/*.sqlite3
 
 # Logs
 *.log
@@ -23,7 +26,9 @@ npm-debug.log*
 # Coverage / cache
 coverage/
 .vitest/
+.turbo/
 *.tsbuildinfo
+next-env.d.ts
 
 # Sistema operacional
 .DS_Store
