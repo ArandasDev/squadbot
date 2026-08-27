@@ -325,12 +325,17 @@ O dashboard fica em <http://localhost:3000>. A API do bot **não é publicada pa
 
 São **dois serviços** no mesmo projeto, a partir do mesmo repositório.
 
+> **O Root Directory dos dois serviços precisa ser a raiz do repositório (`/`).** Os Dockerfiles usam o `package-lock.json` da raiz como contexto de build. Apontar o Root Directory para `apps` (ou `apps/bot`) faz o Railway não encontrar Dockerfile nenhum e cair no autodetector, com o erro `Railpack could not determine how to build the app`.
+
+O repositório já traz `apps/bot/railway.json` e `apps/web/railway.json`, que fixam o builder e o Dockerfile de cada serviço. Basta indicar o arquivo em **Settings → Config-as-code**.
+
 ### Serviço 1 — bot
 
 | Configuração | Valor |
 | --- | --- |
-| Root Directory | `/` |
-| Dockerfile Path | `apps/bot/Dockerfile` |
+| Root Directory | `/` (vazio) |
+| Config-as-code | `apps/bot/railway.json` |
+| Dockerfile Path | `apps/bot/Dockerfile` _(já vem do railway.json)_ |
 | Volume | mount path `/app/data` |
 
 Variáveis:
@@ -348,8 +353,9 @@ API_HOST=::
 
 | Configuração | Valor |
 | --- | --- |
-| Root Directory | `/` |
-| Dockerfile Path | `apps/web/Dockerfile` |
+| Root Directory | `/` (vazio) |
+| Config-as-code | `apps/web/railway.json` |
+| Dockerfile Path | `apps/web/Dockerfile` _(já vem do railway.json)_ |
 | Domínio público | gere um em Settings → Networking |
 
 Variáveis:
@@ -376,6 +382,7 @@ Só o bot recebe volume. O dashboard não guarda estado nenhum — se ele cair e
 
 ### Checklist de produção
 
+- [ ] Root Directory `/` nos dois serviços (não `apps`)
 - [ ] Volume montado em `/app/data` **no serviço do bot**
 - [ ] `DATABASE_PATH=/app/data/squadbot.db`
 - [ ] `API_HOST=::` no bot (rede privada IPv6)
