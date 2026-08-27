@@ -35,6 +35,20 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * O bot nao respondeu: DNS, porta, host errado ou processo fora do ar.
+ * E diferente de ter respondido com erro — por isso tem tipo proprio.
+ */
+export class ApiUnreachableError extends Error {
+  constructor(
+    public readonly url: string,
+    public readonly reason: string,
+  ) {
+    super(`Nao foi possivel alcancar a API do bot em ${url}: ${reason}`);
+    this.name = 'ApiUnreachableError';
+  }
+}
+
 /** Erro lancado quando nao ha sessao — as paginas convertem em redirect. */
 export class NotAuthenticatedError extends Error {
   constructor() {
@@ -78,21 +92,36 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const actorId = await currentActorId();
   const { method = 'GET', body, revalidate = 0 } = options;
 
-  const response = await fetch(`${baseUrl()}${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${serviceToken()}`,
-      'x-actor-id': actorId,
-      ...(body ? { 'content-type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    ...(revalidate > 0 ? { next: { revalidate } } : { cache: 'no-store' }),
-  });
+  const url = `${baseUrl()}${path}`;
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        authorization: `Bearer ${serviceToken()}`,
+        'x-actor-id': actorId,
+        ...(body ? { 'content-type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(revalidate > 0 ? { next: { revalidate } } : { cache: 'no-store' }),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    // Vai para o log do servidor do Next — invisivel para o navegador.
+    console.error('[squadbot-api] falha de rede', { url, reason });
+    throw new ApiUnreachableError(baseUrl(), reason);
+  }
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as
       | { error?: { code?: string; message?: string } }
       | null;
+    console.error('[squadbot-api] resposta de erro', {
+      url,
+      status: response.status,
+      code: payload?.error?.code,
+    });
     throw new ApiRequestError(
       response.status,
       payload?.error?.code ?? 'UNKNOWN',
