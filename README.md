@@ -810,7 +810,7 @@ Todos rodam a partir da raiz.
 | `npm run build:bot` / `build:web` | Compila um só |
 | `npm run start:bot` / `start:web` | Executa o build de produção |
 | `npm run start:standalone --workspace @squadbot/web` | Roda o bundle `standalone` (o que a imagem Docker usa) |
-| `npm run build:web:webpack` | Build do dashboard com webpack, alternativa ao Turbopack |
+| `npm run build:turbopack --workspace @squadbot/web` | Build do dashboard com Turbopack (mais rapido, porem instavel em container) |
 | `npm test` | Suíte de testes |
 | `npm run typecheck` | Verificação de tipos nos dois apps |
 | `npm run lint` | ESLint nos dois apps |
