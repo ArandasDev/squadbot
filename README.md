@@ -1,10 +1,10 @@
 # SquadBot
 
-> A memória compartilhada do seu squad, dentro do Discord.
+> A memória compartilhada do seu squad, dentro do Discord — e um dashboard web para ver tudo de cima.
 
 O SquadBot resolve um problema específico de times pequenos: informação espalhada entre papel, mensagens antigas do Discord, apps de notas, planilhas, gerenciadores de tarefas e calendários diferentes.
 
-Com ele, **o Discord vira o ponto central**. Tarefas, anotações, ideias, decisões, links e lembretes ficam todos no mesmo lugar — organizados, pesquisáveis e persistidos.
+Com ele, **o Discord vira o ponto central**. Tarefas, anotações, ideias, decisões, links e lembretes ficam todos no mesmo lugar — organizados, pesquisáveis e persistidos. E quando você quer uma visão panorâmica em vez de uma conversa, o dashboard mostra o mesmo conteúdo no navegador.
 
 > O squad não deveria precisar lembrar onde guardou uma informação. O SquadBot guarda, organiza e encontra essa informação quando necessário.
 
@@ -12,6 +12,7 @@ Com ele, **o Discord vira o ponto central**. Tarefas, anotações, ideias, decis
 
 ## Índice
 
+- [Como o projeto está organizado](#como-o-projeto-está-organizado)
 - [Requisitos](#requisitos)
 - [Stack](#stack)
 - [Instalação](#instalação)
@@ -26,12 +27,32 @@ Com ele, **o Discord vira o ponto central**. Tarefas, anotações, ideias, decis
 - [Backup do banco](#backup-do-banco)
 - [Timezone](#timezone)
 - [Lista de comandos](#lista-de-comandos)
+- [Dashboard web](#dashboard-web)
+- [API REST](#api-rest)
 - [Permissões](#permissões)
 - [Arquitetura](#arquitetura)
 - [Testes](#testes)
 - [Scripts npm](#scripts-npm)
 - [Logs](#logs)
 - [Roadmap](#roadmap)
+
+---
+
+## Como o projeto está organizado
+
+Monorepo com npm workspaces e **dois apps deployáveis de forma independente**:
+
+```text
+squadbot/
+├── apps/
+│   ├── bot/     Bot do Discord + worker de lembretes + API REST  (dono do SQLite)
+│   └── web/     Dashboard Next.js                                (cliente da API)
+├── package.json          workspaces + scripts agregadores
+├── package-lock.json     lockfile único
+└── docker-compose.yml    sobe os dois juntos
+```
+
+O **bot é o dono do banco**. O dashboard nunca abre o SQLite: ele fala HTTP com a API do bot. Isso não é preciosismo — é o que torna possível rodar os dois como serviços separados, já que um volume persistente só pode estar montado em um serviço por vez.
 
 ---
 
@@ -53,16 +74,24 @@ Não há nenhuma dependência de Python: o projeto é 100% TypeScript/JavaScript
 
 ## Stack
 
+**Bot** (`apps/bot`)
+
 - **Node.js 24** — runtime
 - **TypeScript** (modo `strict`) — todo o código-fonte
 - **discord.js v14** — integração com o Discord
 - **SQLite** via **better-sqlite3** — persistência
+- **Fastify** — API REST consumida pelo dashboard
 - **dotenv** — configuração
 - **Vitest** — testes
-- **ESLint** — lint
-- **Docker** — empacotamento e deploy
 
-O TypeScript em `src/` é compilado para JavaScript em `dist/`, e é o `dist/` que roda em produção.
+**Dashboard** (`apps/web`)
+
+- **Next.js 16** — App Router e Server Components
+- **React 19**
+- **Tailwind CSS v4** + **shadcn/ui** — design system
+- **Auth.js v5** (`next-auth`) — login com Discord
+
+O TypeScript de `apps/bot/src` é compilado para `apps/bot/dist`; o Next gera um bundle `standalone`. Em produção roda sempre o JavaScript compilado.
 
 ---
 
@@ -76,6 +105,8 @@ git clone <url-do-repositorio> squadbot
 cd squadbot && npm install
 ```
 
+Um único `npm install` na raiz instala os dois workspaces.
+
 ---
 
 ## Configuração do Discord Developer Portal
@@ -84,7 +115,7 @@ cd squadbot && npm install
 
 1. Acesse <https://discord.com/developers/applications>.
 2. Clique em **New Application**, dê o nome `SquadBot` e confirme.
-3. Em **General Information**, copie o **Application ID** — ele vai em `DISCORD_CLIENT_ID`.
+3. Em **General Information**, copie o **Application ID** — ele vai em `DISCORD_CLIENT_ID` (bot) e `AUTH_DISCORD_ID` (dashboard).
 
 ### 2. Criar o bot e pegar o token
 
@@ -105,7 +136,21 @@ O SquadBot **não precisa de nenhum Privileged Gateway Intent** (Presence, Serve
    - `Use Slash Commands`
 4. Copie a URL gerada, abra no navegador e escolha o servidor do squad.
 
-### 4. Permitir mensagens diretas
+### 4. Habilitar o login do dashboard
+
+O dashboard usa OAuth2 para identificar quem está acessando.
+
+1. Em **OAuth2 → General**, copie o **Client Secret** — ele vai em `AUTH_DISCORD_SECRET`.
+2. Em **Redirects**, adicione as URLs de callback que você for usar:
+
+   ```text
+   http://localhost:3000/api/auth/callback/discord
+   https://seu-dashboard.up.railway.app/api/auth/callback/discord
+   ```
+
+3. Salve. O dashboard pede apenas o escopo `identify` — quem confere se você é membro do servidor é a API do bot, não o OAuth.
+
+### 5. Permitir mensagens diretas
 
 Os lembretes chegam por **DM**. Cada membro precisa ter, em **Configurações do Servidor → Privacidade**, a opção de receber mensagens diretas de membros do servidor **ativada** — caso contrário o bot não consegue entregar o lembrete (a falha aparece nos logs).
 
@@ -113,13 +158,13 @@ Os lembretes chegam por **DM**. Cada membro precisa ter, em **Configurações do
 
 ## Configuração do ambiente
 
-Copie o arquivo de exemplo:
+São dois arquivos `.env`, um por app.
+
+### Bot — `apps/bot/.env`
 
 ```bash
-cp .env.example .env
+cp apps/bot/.env.example apps/bot/.env
 ```
-
-E preencha:
 
 ```env
 DISCORD_TOKEN=seu-token-aqui
@@ -130,6 +175,10 @@ DEFAULT_TIMEZONE=America/Sao_Paulo
 NODE_ENV=development
 REMINDER_INTERVAL_MS=30000
 LOG_LEVEL=info
+
+API_TOKEN=                 # obrigatório para o dashboard funcionar
+API_PORT=3001
+API_HOST=0.0.0.0
 ```
 
 | Variável | Obrigatória | Descrição |
@@ -142,23 +191,64 @@ LOG_LEVEL=info
 | `NODE_ENV` | não | `development`, `production` ou `test`. |
 | `REMINDER_INTERVAL_MS` | não | Intervalo do worker de lembretes. Padrão: `30000` (30s). |
 | `LOG_LEVEL` | não | `debug`, `info`, `warn` ou `error`. |
+| `API_TOKEN` | para o dashboard | Token de serviço. **Sem ele a API não sobe** e o dashboard não funciona. |
+| `API_PORT` | não | Porta da API. `PORT` (injetada por PaaS) tem precedência. Padrão: `3001`. |
+| `API_HOST` | não | Interface de escuta. Padrão `0.0.0.0`; no Railway veja a [nota sobre IPv6](#deploy-railway-e-similares). |
 
-> O `.env` está no `.gitignore`. Só o `.env.example` é versionado.
+Gere o token de serviço com:
+
+```bash
+openssl rand -hex 32
+```
+
+### Dashboard — `apps/web/.env`
+
+```bash
+cp apps/web/.env.example apps/web/.env
+```
+
+```env
+AUTH_SECRET=
+AUTH_DISCORD_ID=
+AUTH_DISCORD_SECRET=
+AUTH_URL=http://localhost:3000
+SQUADBOT_API_URL=http://localhost:3001
+SQUADBOT_API_TOKEN=
+```
+
+| Variável | Descrição |
+| --- | --- |
+| `AUTH_SECRET` | Segredo de assinatura da sessão. Gere com `npx auth secret`. |
+| `AUTH_DISCORD_ID` | Application ID (o mesmo do bot). |
+| `AUTH_DISCORD_SECRET` | Client Secret do OAuth2. |
+| `AUTH_URL` | URL pública do dashboard, usada no callback do OAuth. |
+| `SQUADBOT_API_URL` | Endereço da API do bot, sem barra no final. |
+| `SQUADBOT_API_TOKEN` | **O mesmo valor** de `API_TOKEN` no bot. |
+
+> `SQUADBOT_API_TOKEN` não tem o prefixo `NEXT_PUBLIC_` de propósito: ele só existe no servidor do Next e nunca é enviado ao navegador. Se os dois valores divergirem, toda chamada volta `401`.
+
+> Os `.env` estão no `.gitignore`. Só os `.env.example` são versionados.
 
 ---
 
 ## Execução em desenvolvimento
 
+Em dois terminais:
+
 ```bash
-npm run dev
+npm run dev:bot
 ```
 
-Roda o TypeScript direto com `tsx watch` — o bot reinicia a cada alteração. Os slash commands são registrados automaticamente no boot.
+```bash
+npm run dev:web
+```
 
-Para registrar os comandos sem subir o bot:
+O bot roda com `tsx watch` (reinicia a cada alteração) e sobe a API em `http://localhost:3001`. O dashboard fica em `http://localhost:3000`.
+
+Para registrar os slash commands sem subir o bot:
 
 ```bash
-npm run deploy:commands:dev
+npm run deploy:commands:dev --workspace @squadbot/bot
 ```
 
 Durante o desenvolvimento, defina `DISCORD_GUILD_ID` com o ID do seu servidor de testes: o registro passa a ser instantâneo em vez de esperar a propagação global.
@@ -172,34 +262,44 @@ npm run build
 ```
 
 ```bash
-npm start
+npm run start:bot
 ```
 
-O `build` compila `src/` → `dist/`; o `start` executa `node dist/index.js`. Em produção **nunca** se executa TypeScript direto.
+```bash
+npm run start:web
+```
+
+O `build` compila os dois workspaces. Em produção **nunca** se executa TypeScript direto.
 
 ---
 
 ## Docker
 
-Build da imagem:
+São duas imagens, ambas construídas **a partir da raiz do repositório** (o lockfile é compartilhado):
 
 ```bash
-docker build -t squadbot .
+docker build -f apps/bot/Dockerfile -t squadbot-bot .
 ```
-
-Execução com volume persistente:
 
 ```bash
-docker run -d --name squadbot --restart unless-stopped --env-file .env -v "$(pwd)/data:/app/data" squadbot
+docker build -f apps/web/Dockerfile -t squadbot-web .
 ```
 
-A imagem é multi-stage: um estágio compila o TypeScript, e o estágio final leva apenas as dependências de produção e o `dist/`. O container roda como usuário `node` (não-root) e o banco fica em `/app/data/squadbot.db`.
+Executando o bot com volume persistente:
 
-> O Dockerfile **não** declara `VOLUME`: o Railway rejeita essa instrução, e ela não é necessária — o mount de `/app/data` é feito em runtime (`-v`, Compose ou Railway Volumes).
+```bash
+docker run -d --name squadbot-bot --restart unless-stopped --env-file apps/bot/.env -v "$(pwd)/apps/bot/data:/app/data" squadbot-bot
+```
+
+As duas imagens são multi-stage e rodam como usuário `node` (não-root). A do bot leva só as dependências de produção e o `dist/`; a do dashboard usa o `output: standalone` do Next, que dispensa `npm install` na imagem final.
+
+> Os Dockerfiles **não** declaram `VOLUME`: o Railway rejeita essa instrução, e ela não é necessária — o mount de `/app/data` é feito em runtime (`-v`, Compose ou Railway Volumes).
 
 ---
 
 ## Docker Compose
+
+Sobe bot e dashboard juntos, já conectados:
 
 ```bash
 docker compose up -d --build
@@ -208,7 +308,7 @@ docker compose up -d --build
 Ver os logs:
 
 ```bash
-docker compose logs -f bot
+docker compose logs -f
 ```
 
 Parar:
@@ -217,39 +317,74 @@ Parar:
 docker compose down
 ```
 
-O `docker-compose.yml` monta `./data` em `/app/data`, então o banco sobrevive a `down`, `up` e rebuilds da imagem.
+O dashboard fica em <http://localhost:3000>. A API do bot **não é publicada para fora**: só o serviço `web` a alcança, pela rede interna, em `http://bot:3001`. O banco vive em `./apps/bot/data`, então sobrevive a `down`, `up` e rebuilds.
 
 ---
 
 ## Deploy (Railway e similares)
 
-O SquadBot é um **worker de longa duração**, não um serviço HTTP — ele não expõe porta.
+São **dois serviços** no mesmo projeto, a partir do mesmo repositório.
 
-### Passo a passo no Railway
+### Serviço 1 — bot
 
-1. Crie um projeto e conecte o repositório. O Railway detecta o `Dockerfile` automaticamente.
-2. Em **Variables**, cadastre `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `NODE_ENV=production` e `DATABASE_PATH=/app/data/squadbot.db`.
-3. **Crie um volume persistente** (**Settings → Volumes → Add Volume**) com o mount path exatamente:
+| Configuração | Valor |
+| --- | --- |
+| Root Directory | `/` |
+| Dockerfile Path | `apps/bot/Dockerfile` |
+| Volume | mount path `/app/data` |
 
-   ```text
-   /app/data
-   ```
+Variáveis:
 
-4. Faça o deploy.
+```env
+DISCORD_TOKEN=...
+DISCORD_CLIENT_ID=...
+NODE_ENV=production
+DATABASE_PATH=/app/data/squadbot.db
+API_TOKEN=<mesmo valor dos dois serviços>
+API_HOST=::
+```
 
-### Por que o volume é obrigatório
+### Serviço 2 — dashboard
 
-O filesystem das plataformas de hospedagem é **efêmero**: a cada deploy, restart ou reciclagem do container, tudo que não estiver num volume é perdido — inclusive o `squadbot.db` com todas as tarefas, notas, decisões e lembretes do squad.
+| Configuração | Valor |
+| --- | --- |
+| Root Directory | `/` |
+| Dockerfile Path | `apps/web/Dockerfile` |
+| Domínio público | gere um em Settings → Networking |
 
-**Sem volume persistente, o squad perde a memória a cada deploy.** Configure o volume antes do primeiro uso real.
+Variáveis:
+
+```env
+NODE_ENV=production
+AUTH_SECRET=...
+AUTH_DISCORD_ID=...
+AUTH_DISCORD_SECRET=...
+AUTH_URL=https://<seu-dominio>.up.railway.app
+SQUADBOT_API_URL=http://<nome-do-servico-do-bot>.railway.internal:3001
+SQUADBOT_API_TOKEN=<mesmo valor dos dois serviços>
+```
+
+E lembre de adicionar `https://<seu-dominio>.up.railway.app/api/auth/callback/discord` nos **Redirects** do OAuth2 no Developer Portal.
+
+### Dois detalhes que costumam morder
+
+**1. `API_HOST=::` no bot.** A rede privada do Railway (`*.railway.internal`) é IPv6-only. Escutando em `0.0.0.0` o processo só aceita IPv4 e o dashboard recebe `ECONNREFUSED` — mesmo com tudo o mais correto.
+
+**2. O volume é obrigatório.** O filesystem das plataformas de hospedagem é **efêmero**: a cada deploy, restart ou reciclagem do container, tudo que não estiver num volume é perdido — inclusive o `squadbot.db` com todas as tarefas, notas, decisões e lembretes do squad. **Sem volume persistente, o squad perde a memória a cada deploy.**
+
+Só o bot recebe volume. O dashboard não guarda estado nenhum — se ele cair e voltar, nada se perde.
 
 ### Checklist de produção
 
-- [ ] Volume montado em `/app/data`
+- [ ] Volume montado em `/app/data` **no serviço do bot**
 - [ ] `DATABASE_PATH=/app/data/squadbot.db`
-- [ ] `NODE_ENV=production`
-- [ ] `DISCORD_TOKEN` e `DISCORD_CLIENT_ID` cadastrados como variáveis (não no código)
-- [ ] `DISCORD_GUILD_ID` **vazio** (registro global)
+- [ ] `API_HOST=::` no bot (rede privada IPv6)
+- [ ] `API_TOKEN` e `SQUADBOT_API_TOKEN` com **o mesmo valor**
+- [ ] `SQUADBOT_API_URL` apontando para o host interno do bot
+- [ ] URL de callback do OAuth cadastrada no Developer Portal
+- [ ] `AUTH_URL` igual ao domínio público do dashboard
+- [ ] `NODE_ENV=production` nos dois serviços
+- [ ] `DISCORD_GUILD_ID` **vazio** (registro global dos comandos)
 - [ ] Rotina de backup do banco definida
 
 ---
@@ -280,7 +415,7 @@ Todo acesso usa **prepared statements**; nenhum valor vindo do usuário é conca
 Com o bot **rodando**, a forma correta é o backup online do SQLite (o `.db` sozinho pode estar incompleto por causa do WAL):
 
 ```bash
-sqlite3 data/squadbot.db ".backup 'data/backup-$(date +%F).db'"
+sqlite3 apps/bot/data/squadbot.db ".backup 'apps/bot/data/backup-$(date +%F).db'"
 ```
 
 Dentro do Docker:
@@ -295,7 +430,7 @@ Copiando o backup para a sua máquina:
 docker compose cp bot:/app/data/backup.db ./backup.db
 ```
 
-Com o bot **parado**, basta copiar `data/squadbot.db` junto com `-wal` e `-shm`, se existirem.
+Com o bot **parado**, basta copiar `squadbot.db` junto com `-wal` e `-shm`, se existirem.
 
 Para restaurar: pare o bot, substitua o arquivo e suba de novo.
 
@@ -304,7 +439,7 @@ Para restaurar: pare o bot, substitua o arquivo e suba de novo.
 ## Timezone
 
 - **Tudo é gravado em UTC** (ISO 8601) no banco.
-- A conversão acontece só na leitura da entrada e na exibição.
+- A conversão acontece só na leitura da entrada e na exibição — vale igual para os embeds do Discord e para o dashboard.
 - Cada usuário tem o seu fuso; o padrão é o do servidor, que por sua vez cai em `DEFAULT_TIMEZONE`.
 
 Configurar o seu fuso:
@@ -317,12 +452,6 @@ Configurar o padrão do servidor (apenas administradores):
 
 ```text
 /config timezone valor:Europe/Lisbon escopo:Padrão do servidor (admin)
-```
-
-Ver a configuração atual:
-
-```text
-/config ver
 ```
 
 Ao criar um lembrete, a data é interpretada **no fuso de quem cria** e exibida a cada pessoa no fuso dela. Quando os fusos diferem, o bot mostra explicitamente as duas leituras na confirmação.
@@ -480,6 +609,84 @@ A busca **sempre respeita o `server_id`** — nunca retorna informação de outr
 
 ---
 
+## Dashboard web
+
+O dashboard é uma **visão panorâmica com ações rápidas**. Criar continua sendo melhor no Discord, onde o autocomplete e o parser de datas em português já resolvem tudo em uma linha.
+
+### Páginas
+
+| Rota | O que mostra |
+| --- | --- |
+| `/entrar` | Login com Discord |
+| `/servidores` | Servidores em que você e o bot estão juntos (pula direto se houver só um) |
+| `/g/[id]` | Resumo do squad: tarefas por projeto, lembretes e ideias novas |
+| `/g/[id]/minhas` | Suas tarefas agrupadas por prioridade, seus lembretes e ideias recentes |
+| `/g/[id]/tarefas` | Todas as tarefas, com filtros de projeto, responsável e status |
+| `/g/[id]/projetos` | Projetos com progresso; o detalhe traz membros e tarefas abertas |
+| `/g/[id]/notas` · `/ideias` · `/decisoes` · `/links` | Listagens por tipo |
+| `/g/[id]/lembretes` | Pendentes, seus e do squad |
+| `/g/[id]/buscar` | Mesma busca do `/buscar`, com filtro por tipo |
+
+### O que dá para fazer pela web
+
+- Concluir, cancelar e iniciar (mover para "em andamento") uma tarefa
+- Mudar o status de uma ideia pelo ciclo de vida
+- Filtrar e buscar
+
+Os filtros ficam na URL, então um recorte é compartilhável por link e sobrevive ao refresh.
+
+### Como o acesso é decidido
+
+O login diz **quem você é**; ele não diz o que você pode ver. A cada requisição o dashboard pergunta à API do bot se você é membro daquela guild, e o bot confere isso no Discord de verdade. Consequências práticas:
+
+- sair do servidor tira o acesso na navegação seguinte, sem precisar deslogar;
+- as ações usam exatamente as mesmas regras dos slash commands — se você não pode concluir uma tarefa pelo `/tarefa concluir`, também não pode pelo botão;
+- ser admin no Discord (`Administrator` ou `Gerenciar servidor`) vale no dashboard também.
+
+O tema acompanha o do sistema e pode ser trocado no menu do avatar.
+
+---
+
+## API REST
+
+O bot expõe uma API somente-leitura (mais um punhado de ações rápidas) em `API_PORT`. Ela existe para o dashboard, mas é um contrato estável — dá para escrever outros clientes.
+
+**Sem `API_TOKEN` configurado, a API não sobe.** É preferível não ter endpoint nenhum a ter um sem autenticação.
+
+Toda rota sob `/api` exige dois cabeçalhos:
+
+```http
+Authorization: Bearer <API_TOKEN>
+X-Actor-Id: <id do usuário no Discord>
+```
+
+O primeiro prova que quem chama é um backend confiável. O segundo diz em nome de quem a chamada é feita — e é resolvido contra a guild real antes de qualquer consulta ao banco.
+
+| Método | Rota | Retorna |
+| --- | --- | --- |
+| `GET` | `/health` | Estado do processo (sem autenticação) |
+| `GET` | `/api/guilds` | Servidores visíveis para o ator |
+| `GET` | `/api/guilds/:id/me` | Usuário, se é admin, fuso e dados da guild |
+| `GET` | `/api/guilds/:id/members` | Membros conhecidos do servidor |
+| `GET` | `/api/guilds/:id/projects` | Projetos com contagem de tarefas |
+| `GET` | `/api/guilds/:id/projects/:projectId` | Projeto com membros |
+| `GET` | `/api/guilds/:id/tasks` | Tarefas (`projectId`, `assignedTo`, `status`, `includeClosed`) |
+| `GET` | `/api/guilds/:id/tasks/:taskId` | Uma tarefa |
+| `GET` | `/api/guilds/:id/items?type=` | Notas, ideias, decisões ou links |
+| `GET` | `/api/guilds/:id/items/:itemId` | Um registro |
+| `GET` | `/api/guilds/:id/reminders?scope=` | Lembretes pendentes (`me` ou `server`) |
+| `GET` | `/api/guilds/:id/search?q=` | Busca unificada |
+| `GET` | `/api/guilds/:id/overview` | Dados do `/minhas` |
+| `GET` | `/api/guilds/:id/summary` | Dados do `/resumo` |
+| `POST` | `/api/guilds/:id/tasks/:taskId/complete` | Conclui |
+| `POST` | `/api/guilds/:id/tasks/:taskId/cancel` | Cancela |
+| `POST` | `/api/guilds/:id/tasks/:taskId/status` | Muda o status |
+| `POST` | `/api/guilds/:id/ideas/:ideaId/status` | Muda o status da ideia |
+
+Erros seguem o formato `{ "error": { "code": "...", "message": "..." } }`, com `400` para validação, `403` para permissão, `404` para inexistente e `500` genérico — detalhe técnico só no log.
+
+---
+
 ## Permissões
 
 ### Administrador
@@ -499,36 +706,35 @@ Qualquer pessoa do servidor. Pode:
 - Gerenciar as tarefas **atribuídas a ele**
 - Cancelar lembretes que criou ou que receberia
 
-Todo comando verifica `guildId`, `userId` e permissões antes de qualquer escrita.
+Todo comando verifica `guildId`, `userId` e permissões antes de qualquer escrita. A API aplica exatamente as mesmas regras — a interface web não é uma porta dos fundos.
 
 ---
 
 ## Arquitetura
 
 ```text
-Discord Commands   →  coleta as opções, responde ao usuário
-       ↓
-Services           →  regras de negócio, validação, permissões
-       ↓
-Repositories       →  SQL com prepared statements
-       ↓
-SQLite
+Discord Commands ─┐
+                  ├─→  Services  →  Repositories  →  SQLite
+REST API ─────────┘     (regras)      (SQL)
+     ↑
+Dashboard (Next.js, Server Components + Server Actions)
 ```
 
-Comandos não contêm regras de negócio complexas: eles traduzem a interação do Discord e delegam.
+A camada de `services` é a única dona das regras de negócio. Slash commands e API são apenas duas portas de entrada para ela — por isso a permissão de concluir uma tarefa é idêntica nos dois caminhos, sem código duplicado.
 
 ```text
-src/
+apps/bot/src/
 ├── index.ts                  bootstrap
 ├── config.ts                 leitura e validação do ambiente
+├── api/
+│   ├── server.ts             rotas Fastify
+│   ├── auth.ts               token de serviço + resolução do ator
+│   └── dto.ts                contrato público (snake_case → camelCase)
 ├── bot/
 │   ├── client.ts             criação do client discord.js
 │   ├── events.ts             roteamento de interações e tratamento de erros
 │   └── commands.ts           registro dos slash commands na API
 ├── commands/                 um diretório por domínio
-│   ├── shared.ts             helpers: opções, autocomplete, paginação
-│   ├── itemViews.ts          renderização de itens
-│   └── project|task|note|idea|decision|link|reminder|general/
 ├── services/                 regras de negócio
 ├── database/
 │   ├── Database.ts           conexão, WAL, prepared statements em cache
@@ -538,6 +744,18 @@ src/
 │   └── ReminderWorker.ts     entrega dos lembretes
 ├── utils/                    dates, permissions, formatting, logger, errors
 └── types/                    tipos compartilhados
+
+apps/web/src/
+├── auth.ts                   Auth.js (provider Discord)
+├── app/
+│   ├── entrar/               login
+│   ├── servidores/           escolha de servidor
+│   └── g/[guildId]/          dashboard, com actions.ts (Server Actions)
+├── components/               UI do dashboard + components/ui (shadcn)
+└── lib/
+    ├── api/                  cliente da API do bot (server-only) e tipos
+    ├── format.ts             rótulos e datas no fuso do usuário
+    └── utils.ts              cn()
 ```
 
 ### Worker de lembretes
@@ -554,28 +772,26 @@ Nada fica só em memória: **todo lembrete está no SQLite**. Se o bot cair ou f
 npm test
 ```
 
-```bash
-npm run test:watch
-```
-
 Os testes rodam sobre SQLite **em memória** — rápidos e isolados, sem tocar no banco real. A suíte cobre criação de projeto, criação/conclusão de tarefa, notas, ideias, decisões, links, lembretes (para si e para outra pessoa), processamento de lembrete vencido, reentrega após restart, busca, isolamento entre servidores, permissões e conversão de timezone.
+
+A API tem testes próprios via `fastify.inject` com um client do Discord falso: token ausente ou incorreto, ator não informado, quem não é membro da guild, isolamento entre servidores e as permissões de cada ação.
 
 ---
 
 ## Scripts npm
 
+Todos rodam a partir da raiz.
+
 | Script | O que faz |
 | --- | --- |
-| `npm run dev` | Executa em modo watch com `tsx` |
-| `npm run build` | Compila `src/` → `dist/` |
-| `npm start` | Executa o JavaScript compilado |
-| `npm test` | Roda a suíte de testes |
-| `npm run test:watch` | Testes em modo watch |
-| `npm run typecheck` | Verificação de tipos sem emitir arquivos |
-| `npm run lint` | ESLint |
-| `npm run lint:fix` | ESLint com correção automática |
-| `npm run deploy:commands` | Registra os slash commands (compilado) |
-| `npm run deploy:commands:dev` | Registra os slash commands (TypeScript) |
+| `npm run dev:bot` | Bot em modo watch com `tsx` |
+| `npm run dev:web` | Dashboard em modo dev |
+| `npm run build` | Compila os dois workspaces |
+| `npm run build:bot` / `build:web` | Compila um só |
+| `npm run start:bot` / `start:web` | Executa o build de produção |
+| `npm test` | Suíte de testes |
+| `npm run typecheck` | Verificação de tipos nos dois apps |
+| `npm run lint` | ESLint nos dois apps |
 
 ---
 
@@ -583,9 +799,9 @@ Os testes rodam sobre SQLite **em memória** — rápidos e isolados, sem tocar 
 
 Logs estruturados, sem dependência externa: JSON em produção, texto legível em desenvolvimento.
 
-Eventos registrados: `Bot iniciado`, `Banco conectado`, `Comandos registrados`, `Discord conectado`, `Reminder worker iniciado`, `Comando executado`, `Comando rejeitado`, `Erro de comando`, `Lembrete enviado`, `Erro ao enviar lembrete`.
+Eventos registrados: `Bot iniciado`, `Banco conectado`, `Comandos registrados`, `Discord conectado`, `Reminder worker iniciado`, `API REST iniciada`, `Comando executado`, `Comando rejeitado`, `Erro de comando`, `Lembrete enviado`, `Erro ao enviar lembrete`, além das ações feitas pela web.
 
-Tokens e campos sensíveis são substituídos por `[REDACTED]` antes de qualquer escrita. Erros técnicos ficam **apenas** no log — o usuário recebe uma mensagem amigável no Discord.
+Tokens e campos sensíveis são substituídos por `[REDACTED]` antes de qualquer escrita. Erros técnicos ficam **apenas** no log — o usuário recebe uma mensagem amigável no Discord ou no dashboard.
 
 ---
 
@@ -593,14 +809,12 @@ Tokens e campos sensíveis são substituídos por `[REDACTED]` antes de qualquer
 
 A arquitetura está preparada para, no futuro:
 
+- Criação e edição completas pelo dashboard
 - IA para interpretar mensagens em linguagem natural
 - Resumo automático e relatórios semanais
 - Lembretes recorrentes
-- Dashboard web
 - Integrações com GitHub e Google Calendar
 - Estatísticas do squad, busca semântica e memória de longo prazo
-
-Nada disso faz parte do MVP — o objetivo aqui é um bot simples, confiável e barato de manter.
 
 ---
 
