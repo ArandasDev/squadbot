@@ -327,20 +327,31 @@ São **dois serviços** no mesmo projeto, a partir do mesmo repositório.
 
 > **O Root Directory dos dois serviços precisa ser a raiz do repositório (`/`).** Os Dockerfiles usam o `package-lock.json` da raiz como contexto de build. Apontar o Root Directory para `apps` (ou `apps/bot`) faz o Railway não encontrar Dockerfile nenhum e cair no autodetector, com o erro `Railpack could not determine how to build the app`.
 
-O repositório já traz `apps/bot/railway.json` e `apps/web/railway.json`, que fixam o builder e o Dockerfile de cada serviço. Basta indicar o arquivo em **Settings → Config-as-code**.
+Com o Root Directory correto, falta dizer ao Railway **qual** Dockerfile usar — ele só autodetecta um `Dockerfile` na raiz, e os nossos estão em `apps/*/`. Sem isso o build cai no Railpack e falha com `No start command detected`.
+
+A forma mais confiável é uma variável de ambiente do serviço:
+
+```env
+RAILWAY_DOCKERFILE_PATH=apps/bot/Dockerfile
+```
+
+No serviço do dashboard, `apps/web/Dockerfile`. O caminho é relativo ao Root Directory.
+
+Alternativa equivalente: o repositório traz `apps/bot/railway.json` e `apps/web/railway.json`, que já fixam builder e caminho. Para usá-los, aponte o arquivo em **Settings → Build → Railway Config File**.
 
 ### Serviço 1 — bot
 
 | Configuração | Valor |
 | --- | --- |
 | Root Directory | `/` (vazio) |
-| Config-as-code | `apps/bot/railway.json` |
-| Dockerfile Path | `apps/bot/Dockerfile` _(já vem do railway.json)_ |
+| Variável `RAILWAY_DOCKERFILE_PATH` | `apps/bot/Dockerfile` |
+| _ou_ Railway Config File | `apps/bot/railway.json` |
 | Volume | mount path `/app/data` |
 
 Variáveis:
 
 ```env
+RAILWAY_DOCKERFILE_PATH=apps/bot/Dockerfile
 DISCORD_TOKEN=...
 DISCORD_CLIENT_ID=...
 NODE_ENV=production
@@ -354,13 +365,14 @@ API_HOST=::
 | Configuração | Valor |
 | --- | --- |
 | Root Directory | `/` (vazio) |
-| Config-as-code | `apps/web/railway.json` |
-| Dockerfile Path | `apps/web/Dockerfile` _(já vem do railway.json)_ |
+| Variável `RAILWAY_DOCKERFILE_PATH` | `apps/web/Dockerfile` |
+| _ou_ Railway Config File | `apps/web/railway.json` |
 | Domínio público | gere um em Settings → Networking |
 
 Variáveis:
 
 ```env
+RAILWAY_DOCKERFILE_PATH=apps/web/Dockerfile
 NODE_ENV=production
 AUTH_SECRET=...
 AUTH_DISCORD_ID=...
@@ -383,6 +395,7 @@ Só o bot recebe volume. O dashboard não guarda estado nenhum — se ele cair e
 ### Checklist de produção
 
 - [ ] Root Directory `/` nos dois serviços (não `apps`)
+- [ ] `RAILWAY_DOCKERFILE_PATH` apontando para o Dockerfile de cada serviço
 - [ ] Volume montado em `/app/data` **no serviço do bot**
 - [ ] `DATABASE_PATH=/app/data/squadbot.db`
 - [ ] `API_HOST=::` no bot (rede privada IPv6)
