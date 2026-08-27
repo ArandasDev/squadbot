@@ -195,6 +195,8 @@ docker run -d --name squadbot --restart unless-stopped --env-file .env -v "$(pwd
 
 A imagem é multi-stage: um estágio compila o TypeScript, e o estágio final leva apenas as dependências de produção e o `dist/`. O container roda como usuário `node` (não-root) e o banco fica em `/app/data/squadbot.db`.
 
+> O Dockerfile **não** declara `VOLUME`: o Railway rejeita essa instrução, e ela não é necessária — o mount de `/app/data` é feito em runtime (`-v`, Compose ou Railway Volumes).
+
 ---
 
 ## Docker Compose

@@ -28,10 +28,12 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 
-# O banco SQLite vive num volume: o filesystem do container é efemero.
+# O filesystem do container é efemero: /app/data precisa receber um volume
+# persistente em runtime (Railway Volumes, ou -v / docker compose localmente).
+# Nao declaramos VOLUME aqui — o Railway rejeita a instrucao e ela nao e
+# necessaria para que o mount funcione.
 RUN mkdir -p /app/data && chown -R node:node /app
 
 USER node
-VOLUME ["/app/data"]
 
 CMD ["node", "dist/index.js"]
