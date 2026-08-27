@@ -3,6 +3,14 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
+/**
+ * Nada neste app e estatico: toda pagina depende de quem esta logado e do
+ * servidor selecionado. Declarar aqui vale para todas as rotas aninhadas e
+ * impede que o build tente prerenderizar paginas que chamam auth() — sem
+ * request, sem cookie e sem as variaveis de ambiente de runtime.
+ */
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: {
     default: 'SquadBot',
