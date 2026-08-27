@@ -58,11 +58,31 @@ export class NotAuthenticatedError extends Error {
 }
 
 function baseUrl(): string {
-  const url = process.env.SQUADBOT_API_URL;
-  if (!url) {
+  const raw = process.env.SQUADBOT_API_URL?.trim();
+  if (!raw) {
     throw new Error('SQUADBOT_API_URL nao configurada. Aponte para a API do bot.');
   }
-  return url.replace(/\/+$/, '');
+
+  const url = raw.replace(/\/+$/, '');
+
+  // Sem esquema, o fetch estoura um generico "fetch failed" e a causa real
+  // (faltou o http://) fica invisivel. Melhor recusar dizendo o que falta.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(
+      `SQUADBOT_API_URL invalida: "${url}". Faltou o esquema? Use algo como http://bot.railway.internal:8080`,
+    );
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(
+      `SQUADBOT_API_URL precisa comecar com http:// ou https://, e nao "${parsed.protocol}".`,
+    );
+  }
+
+  return url;
 }
 
 function serviceToken(): string {
