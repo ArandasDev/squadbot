@@ -20,6 +20,7 @@
     "start:web": "npm run start --workspace @squadbot/web",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "build:web:webpack": "npm run build:webpack --workspace @squadbot/web"
   }
 }

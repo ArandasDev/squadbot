@@ -9,7 +9,8 @@
     "start": "next start -H 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "start:standalone": "node .next/standalone/apps/web/server.js"
+    "start:standalone": "node .next/standalone/apps/web/server.js",
+    "build:webpack": "next build --webpack"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
